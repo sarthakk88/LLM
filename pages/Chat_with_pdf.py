@@ -1,4 +1,6 @@
 import streamlit as st
+import pickle
+import tempfile
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -9,7 +11,7 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import os
 
-
+DB_FAISS_PATH = 'vectorstore/db_faiss'
 os.environ["GOOGLE_API_KEY"] = "AIzaSyAUMbvWhxoQv07iLJC6P9c2LXNwBbFLl1w"
 genai.configure(api_key="AIzaSyAUMbvWhxoQv07iLJC6P9c2LXNwBbFLl1w")
 
@@ -33,17 +35,9 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    ## Save the vector store for later reuse
-    with open("db/faiss_store.pkl", "wb") as f:
+    # vector_store.save_local(DB_FAISS_PATH)
+    with open(DB_FAISS_PATH, "wb") as f:
         pickle.dump(vector_store, f)
-
-def load_vector_store():
-    # Indexing
-    ### Load vector store
-    with open("db/faiss_store.pkl", "rb") as f:
-        vectordb = pickle.load(f)
-
-    return vectordb
 
 
 def get_conversational_chain():
@@ -70,8 +64,10 @@ def get_conversational_chain():
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     
-    new_db = load_vector_store()
-    docs = new_db.similarity_search(user_question)
+    if os.path.exists(DB_FAISS_PATH):
+        with open(DB_FAISS_PATH, "rb") as f:
+            vector_store = pickle.load(f)
+    docs = vector_store.similarity_search(user_question)
 
     chain = get_conversational_chain()
 
