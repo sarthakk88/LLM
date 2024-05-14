@@ -97,25 +97,60 @@ def user_input(user_question):
     st.write("Reply: ", response["output_text"])
 
 
-def main():
-    st.set_page_config("Chat PDF")
-    st.header("Chat with PDF using Gemini💁")
 
+st.set_page_config("Chat PDF")
+st.header("Chat with PDF using Gemini💁")
+# Google API
+with st.sidebar:
+    if 'GOOGLE_API_KEY' in st.secrets:
+        st.success('API key already provided!', icon='✅')
+        GOOGLE_API_KEY = st.secrets['GOOGLE_API_KEY']
+    else:
+        GOOGLE_API_KEY = st.text_input('Enter Gemini API Key:', type='password')
+        if not GOOGLE_API_KEY:
+            st.warning('Please enter your credentials!', icon='⚠️')
+        else:
+            st.success('Proceed to entering your prompt message!', icon='👉')
 
-    with st.sidebar:
-        st.title("Menu:")
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-        if st.button("Submit & Process"):
-            with st.spinner("Processing..."):
-                raw_text = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(raw_text)
-                vector_store = get_embeddings(text_chunks)
-                st.success("Done")
+os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
 
-                user_question = st.text_input("Ask a Question from the PDF Files")
+# Store LLM generated responses
+if "messages" not in st.session_state.keys():
+    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 
-                if user_question:
-                    user_input(user_question)
+# Display or clear chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
 
-if __name__ == "__main__":
-    main()
+def clear_chat_history():
+    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+
+st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
+
+# User-provided prompt
+if prompt := st.chat_input(disabled=not replicate_api):
+    pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
+    if st.button("Submit & Process"):
+        with st.spinner("Processing..."):
+            raw_text = get_pdf_text(pdf_docs)
+            text_chunks = get_text_chunks(raw_text)
+            vector_store = get_embeddings(text_chunks)
+            st.success("Done")
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.write(prompt)
+
+# Generate a new response if last message is not from assistant
+if st.session_state.messages[-1]["role"] != "assistant":
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            response = user_input(prompt)
+            placeholder = st.empty()
+            full_response = ''
+            for item in response:
+                full_response += item
+                placeholder.markdown(full_response)
+            placeholder.markdown(full_response)
+    message = {"role": "assistant", "content": full_response}
+    st.session_state.messages.append(message)
