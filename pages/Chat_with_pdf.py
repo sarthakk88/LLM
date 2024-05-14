@@ -113,7 +113,8 @@ with st.sidebar:
             st.success('Proceed to entering your prompt message!', icon='👉')
 
 os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
-
+ 
+pdf_docs = []
 if GOOGLE_API_KEY:
     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
     if st.button("Submit & Process"):
