@@ -31,13 +31,34 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
+# find or create the embeddings
+def get_embeddings(text_chunks):
+    # check if vector store already exists
+    # if REUSE_PKL_STORE is True, then load the vector store from disk if it exists
+    reuse_pkl_store = os.getenv("REUSE_PKL_STORE")
+    if reuse_pkl_store == "True" and os.path.exists(DB_FAISS_PATH):
+        with open(DB_FAISS_PATH, "rb") as f:
+            vector_store = pickle.load(f)
+        st.write("Embeddings loaded from disk")
+    #else create embeddings and save to disk
+    else:
+        embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+        # save the vector store to disk
+        with open(DB_FAISS_PATH, "wb") as f:
+            pickle.dump(vector_store, f)
+        st.write("Embeddings saved to disk")
+    if vector_store is not None:
+        return vector_store
+    else:
+        raise ValueError("Issue creating and saving vector store")
 
-def get_vector_store(text_chunks):
-    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    # vector_store.save_local(DB_FAISS_PATH)
-    with open(DB_FAISS_PATH, "wb") as f:
-        pickle.dump(vector_store, f)
+# def get_vector_store(text_chunks):
+#     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+#     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+#     # vector_store.save_local(DB_FAISS_PATH)
+#     with open(DB_FAISS_PATH, "wb") as f:
+#         pickle.dump(vector_store, f)
 
 
 def get_conversational_chain():
@@ -60,20 +81,13 @@ def get_conversational_chain():
     return chain
 
 
-
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     
-    if os.path.exists(DB_FAISS_PATH):
-        with open(DB_FAISS_PATH, "rb") as f:
-            vector_store = pickle.load(f)
-            docs = vector_store.similarity_search(user_question)
-
-    else:
-        st.error("Error importing embeddings")
+    vector_store = get_embeddings()
+    docs = vector_store.similarity_search(user_question)
 
     chain = get_conversational_chain()
-
     
     response = chain(
         {"input_documents":docs, "question": user_question}
@@ -87,10 +101,6 @@ def main():
     st.set_page_config("Chat PDF")
     st.header("Chat with PDF using Gemini💁")
 
-    user_question = st.text_input("Ask a Question from the PDF Files")
-
-    if user_question:
-        user_input(user_question)
 
     with st.sidebar:
         st.title("Menu:")
@@ -99,10 +109,13 @@ def main():
             with st.spinner("Processing..."):
                 raw_text = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
-                get_vector_store(text_chunks)
+                vector_store = get_embeddings(text_chunks)
                 st.success("Done")
 
+                user_question = st.text_input("Ask a Question from the PDF Files")
 
+                if user_question:
+                    user_input(user_question)
 
 if __name__ == "__main__":
     main()
