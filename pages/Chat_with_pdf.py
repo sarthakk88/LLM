@@ -33,7 +33,17 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("faiss_index")
+    ## Save the vector store for later reuse
+    with open("db/faiss_store.pkl", "wb") as f:
+        pickle.dump(vector_store, f)
+
+def load_vector_store():
+    # Indexing
+    ### Load vector store
+    with open("db/faiss_store.pkl", "rb") as f:
+        vectordb = pickle.load(f)
+
+    return vectordb
 
 
 def get_conversational_chain():
@@ -60,7 +70,7 @@ def get_conversational_chain():
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     
-    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    new_db = load_vector_store()
     docs = new_db.similarity_search(user_question)
 
     chain = get_conversational_chain()
@@ -72,8 +82,6 @@ def user_input(user_question):
 
     print(response)
     st.write("Reply: ", response["output_text"])
-
-
 
 
 def main():
