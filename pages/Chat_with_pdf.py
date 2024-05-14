@@ -12,7 +12,7 @@ from langchain.prompts import PromptTemplate
 import os
 
 DB_FAISS_PATH = 'vectorstore/db_faiss'
-os.environ["GOOGLE_API_KEY"] = "AIzaSyAUMbvWhxoQv07iLJC6P9c2LXNwBbFLl1w"
+# os.environ["GOOGLE_API_KEY"] = "AIzaSyAUMbvWhxoQv07iLJC6P9c2LXNwBbFLl1w"
 genai.configure(api_key="AIzaSyAUMbvWhxoQv07iLJC6P9c2LXNwBbFLl1w")
 
 
@@ -127,9 +127,7 @@ def clear_chat_history():
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 
 st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
-
-# User-provided prompt
-if prompt := st.chat_input(disabled=not GOOGLE_API_KEY):
+if GOOGLE_API_KEY:
     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
     if st.button("Submit & Process"):
         with st.spinner("Processing..."):
@@ -137,6 +135,9 @@ if prompt := st.chat_input(disabled=not GOOGLE_API_KEY):
             text_chunks = get_text_chunks(raw_text)
             vector_store = get_embeddings(text_chunks)
             st.success("Done")
+
+# User-provided prompt
+if prompt := st.chat_input(disabled=not GOOGLE_API_KEY):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
