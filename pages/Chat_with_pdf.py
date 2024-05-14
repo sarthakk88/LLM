@@ -67,7 +67,10 @@ def user_input(user_question):
     if os.path.exists(DB_FAISS_PATH):
         with open(DB_FAISS_PATH, "rb") as f:
             vector_store = pickle.load(f)
-    docs = vector_store.similarity_search(user_question)
+            docs = vector_store.similarity_search(user_question)
+
+    else:
+        st.error("Error importing embeddings")
 
     chain = get_conversational_chain()
 
