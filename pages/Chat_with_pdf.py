@@ -32,7 +32,7 @@ def get_text_chunks(text):
     return chunks
 
 # find or create the embeddings
-def get_embeddings(text_chunks):
+def get_embeddings(text_chunks=" "):
     # check if vector store already exists
     # if REUSE_PKL_STORE is True, then load the vector store from disk if it exists
     reuse_pkl_store = os.getenv("REUSE_PKL_STORE")
@@ -114,6 +114,15 @@ with st.sidebar:
 
 os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
 
+if GOOGLE_API_KEY:
+    pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
+    if st.button("Submit & Process"):
+        with st.spinner("Processing..."):
+            raw_text = get_pdf_text(pdf_docs)
+            text_chunks = get_text_chunks(raw_text)
+            vector_store = get_embeddings(text_chunks)
+            st.success("Done")
+
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
@@ -126,14 +135,6 @@ for message in st.session_state.messages:
 def clear_chat_history():
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 
-if GOOGLE_API_KEY:
-    pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-    if st.button("Submit & Process"):
-        with st.spinner("Processing..."):
-            raw_text = get_pdf_text(pdf_docs)
-            text_chunks = get_text_chunks(raw_text)
-            vector_store = get_embeddings(text_chunks)
-            st.success("Done")
 
 if pdf_docs:
     st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
